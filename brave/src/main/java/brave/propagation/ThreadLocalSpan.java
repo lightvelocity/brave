@@ -5,6 +5,7 @@ import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.internal.Nullable;
+
 import java.util.ArrayDeque;
 
 /**
@@ -18,7 +19,7 @@ import java.util.ArrayDeque;
  * <p>Provided the library guarantees these run on the same thread, you can simply propagate the
  * result of {@link Tracer#startScopedSpan(String)} or {@link Tracer#withSpanInScope(Span)} from the
  * starting callback to the closing one. This is typically done with a request-scoped attribute.
- *
+ * <p>
  * Here's an example:
  * <pre>{@code
  * class MyFilter extends Filter {
@@ -49,7 +50,7 @@ import java.util.ArrayDeque;
  * <p>Sometimes you have to instrument a library where There's no attribute namespace shared across
  * request and response. For this scenario, you can use {@link ThreadLocalSpan} to temporarily store
  * the span between callbacks.
- *
+ * <p>
  * Here's an example:
  * <pre>{@code
  * class MyFilter extends Filter {
@@ -74,88 +75,92 @@ import java.util.ArrayDeque;
  * }</pre>
  */
 public class ThreadLocalSpan {
-  /**
-   * This uses the {@link Tracing#currentTracer()}, which means calls to {@link #next()} may return
-   * null. Use this when you have no other means to get a reference to the tracer. For example, JDBC
-   * connections, as they often initialize prior to the tracing component.
-   */
-  public static final ThreadLocalSpan CURRENT_TRACER = new ThreadLocalSpan(null);
+    /**
+     * This uses the {@link Tracing#currentTracer()}, which means calls to {@link #next()} may return
+     * null. Use this when you have no other means to get a reference to the tracer. For example, JDBC
+     * connections, as they often initialize prior to the tracing component.
+     */
+    public static final ThreadLocalSpan CURRENT_TRACER = new ThreadLocalSpan(null);
 
-  public static ThreadLocalSpan create(Tracer tracer) {
-    if (tracer == null) throw new NullPointerException("tracer == null");
-    return new ThreadLocalSpan(tracer);
-  }
-
-  @Nullable final Tracer tracer;
-
-  ThreadLocalSpan(Tracer tracer) {
-    this.tracer = tracer;
-  }
-
-  Tracer tracer() {
-    return tracer != null ? tracer : Tracing.currentTracer();
-  }
-
-  /**
-   * Returns the {@link Tracer#nextSpan(TraceContextOrSamplingFlags)} or null if {@link
-   * #CURRENT_TRACER} and tracing isn't available.
-   */
-  @Nullable public Span next(TraceContextOrSamplingFlags extracted) {
-    Tracer tracer = tracer();
-    if (tracer == null) return null;
-    Span next = tracer.nextSpan(extracted);
-    Object[] spanAndScope = {next, tracer.withSpanInScope(next)};
-    getCurrentSpanInScopeStack().addFirst(spanAndScope);
-    return next;
-  }
-
-  /**
-   * Returns the {@link Tracer#nextSpan()} or null if {@link #CURRENT_TRACER} and tracing isn't
-   * available.
-   */
-  @Nullable public Span next() {
-    Tracer tracer = tracer();
-    if (tracer == null) return null;
-    Span next = tracer.nextSpan();
-    Object[] spanAndScope = {next, tracer.withSpanInScope(next)};
-    getCurrentSpanInScopeStack().addFirst(spanAndScope);
-    return next;
-  }
-
-  /**
-   * Returns the span set in scope via {@link #next()} or null if there was none.
-   *
-   * <p>When assertions are on, this will throw an assertion error if the span returned was not the
-   * one currently in context. This could happen if someone called {@link
-   * Tracer#withSpanInScope(Span)} or {@link CurrentTraceContext#newScope(TraceContext)} outside a
-   * try/finally block.
-   */
-  @Nullable public Span remove() {
-    Tracer tracer = tracer();
-    Span currentSpan = tracer != null ? tracer.currentSpan() : null;
-    Object[] spanAndScope = getCurrentSpanInScopeStack().pollFirst();
-    if (spanAndScope == null) return currentSpan;
-
-    Span span = (Span) spanAndScope[0];
-    ((SpanInScope) spanAndScope[1]).close();
-    assert span.equals(currentSpan) :
-        "Misalignment: scoped span " + span + " !=  current span " + currentSpan;
-    return currentSpan;
-  }
-
-  /**
-   * This keeps track of a stack with a normal array dequeue. Redundant stacking of the same span is
-   * not possible because there is no api to place an arbitrary span in scope using this api.
-   */
-  @SuppressWarnings("ThreadLocalUsage") // intentional: to support multiple Tracer instances
-  final ThreadLocal<ArrayDeque<Object[]>> currentSpanInScopeStack = new ThreadLocal<>();
-
-  ArrayDeque<Object[]> getCurrentSpanInScopeStack() {
-    ArrayDeque<Object[]> stack = currentSpanInScopeStack.get();
-    if (stack == null) {
-      stack = new ArrayDeque<>();
-      currentSpanInScopeStack.set(stack);
+    public static ThreadLocalSpan create(Tracer tracer) {
+        if (tracer == null) throw new NullPointerException("tracer == null");
+        return new ThreadLocalSpan(tracer);
     }
-    return stack;
-  }
+
+    @Nullable
+    final Tracer tracer;
+
+    ThreadLocalSpan(Tracer tracer) {
+        this.tracer = tracer;
+    }
+
+    Tracer tracer() {
+        return tracer != null ? tracer : Tracing.currentTracer();
+    }
+
+    /**
+     * Returns the {@link Tracer#nextSpan(TraceContextOrSamplingFlags)} or null if {@link
+     * #CURRENT_TRACER} and tracing isn't available.
+     */
+    @Nullable
+    public Span next(TraceContextOrSamplingFlags extracted) {
+        Tracer tracer = tracer();
+        if (tracer == null) return null;
+        Span next = tracer.nextSpan(extracted);
+        Object[] spanAndScope = {next, tracer.withSpanInScope(next)};
+        getCurrentSpanInScopeStack().addFirst(spanAndScope);
+        return next;
+    }
+
+    /**
+     * Returns the {@link Tracer#nextSpan()} or null if {@link #CURRENT_TRACER} and tracing isn't
+     * available.
+     */
+    @Nullable
+    public Span next() {
+        Tracer tracer = tracer();
+        if (tracer == null) return null;
+        Span next = tracer.nextSpan();
+        Object[] spanAndScope = {next, tracer.withSpanInScope(next)};
+        getCurrentSpanInScopeStack().addFirst(spanAndScope);
+        return next;
+    }
+
+    /**
+     * Returns the span set in scope via {@link #next()} or null if there was none.
+     *
+     * <p>When assertions are on, this will throw an assertion error if the span returned was not the
+     * one currently in context. This could happen if someone called {@link
+     * Tracer#withSpanInScope(Span)} or {@link CurrentTraceContext#newScope(TraceContext)} outside a
+     * try/finally block.
+     */
+    @Nullable
+    public Span remove() {
+        Tracer tracer = tracer();
+        Span currentSpan = tracer != null ? tracer.currentSpan() : null;
+        Object[] spanAndScope = getCurrentSpanInScopeStack().pollFirst();
+        if (spanAndScope == null) return currentSpan;
+
+        Span span = (Span) spanAndScope[0];
+        ((SpanInScope) spanAndScope[1]).close();
+        assert span.equals(currentSpan) :
+                "Misalignment: scoped span " + span + " !=  current span " + currentSpan;
+        return currentSpan;
+    }
+
+    /**
+     * This keeps track of a stack with a normal array dequeue. Redundant stacking of the same span is
+     * not possible because there is no api to place an arbitrary span in scope using this api.
+     */
+    @SuppressWarnings("ThreadLocalUsage") // intentional: to support multiple Tracer instances
+    final ThreadLocal<ArrayDeque<Object[]>> currentSpanInScopeStack = new ThreadLocal<>();
+
+    ArrayDeque<Object[]> getCurrentSpanInScopeStack() {
+        ArrayDeque<Object[]> stack = currentSpanInScopeStack.get();
+        if (stack == null) {
+            stack = new ArrayDeque<>();
+            currentSpanInScopeStack.set(stack);
+        }
+        return stack;
+    }
 }
