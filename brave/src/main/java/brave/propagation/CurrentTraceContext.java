@@ -52,7 +52,8 @@ public abstract class CurrentTraceContext {
     /**
      * Returns the current span in scope or null if there isn't one.
      */
-    public abstract @Nullable TraceContext get();
+    public abstract @Nullable
+    TraceContext get();
 
     /**
      * Sets the current span in scope until the returned object is closed. It is a programming error

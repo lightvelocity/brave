@@ -13,5 +13,5 @@ package brave;
 // FunctionalInterface except Java language level 6
 public interface Clock {
 
-  long currentTimeMicroseconds();
+    long currentTimeMicroseconds();
 }

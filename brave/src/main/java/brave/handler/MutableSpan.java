@@ -18,7 +18,7 @@ import java.util.Locale;
 public final class MutableSpan implements Cloneable {
 
     public interface TagConsumer<T> {
-        /**
+         /**
          * @see brave.Span#tag(String, String)
          */
         void accept(T target, String key, String value);

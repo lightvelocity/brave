@@ -7,29 +7,40 @@ package brave;
  */
 public final class CurrentSpanCustomizer implements SpanCustomizer {
 
-  private final Tracer tracer;
+    private final Tracer tracer;
 
-  /** Creates a span customizer that will affect the current span in scope if present */
-  public static CurrentSpanCustomizer create(Tracing tracing) {
-    return new CurrentSpanCustomizer(tracing);
-  }
+    /**
+     * Creates a span customizer that will affect the current span in scope if present
+     */
+    public static CurrentSpanCustomizer create(Tracing tracing) {
+        return new CurrentSpanCustomizer(tracing);
+    }
 
-  CurrentSpanCustomizer(Tracing tracing) {
-    this.tracer = tracing.tracer();
-  }
+    CurrentSpanCustomizer(Tracing tracing) {
+        this.tracer = tracing.tracer();
+    }
 
-  /** {@inheritDoc} */
-  @Override public SpanCustomizer name(String name) {
-    return tracer.currentSpanCustomizer().name(name);
-  }
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public SpanCustomizer name(String name) {
+        return tracer.currentSpanCustomizer().name(name);
+    }
 
-  /** {@inheritDoc} */
-  @Override public SpanCustomizer tag(String key, String value) {
-    return tracer.currentSpanCustomizer().tag(key, value);
-  }
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public SpanCustomizer tag(String key, String value) {
+        return tracer.currentSpanCustomizer().tag(key, value);
+    }
 
-  /** {@inheritDoc} */
-  @Override public SpanCustomizer annotate(String value) {
-    return tracer.currentSpanCustomizer().annotate(value);
-  }
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public SpanCustomizer annotate(String value) {
+        return tracer.currentSpanCustomizer().annotate(value);
+    }
 }
